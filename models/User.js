@@ -1,8 +1,14 @@
 const { Model, DataTypes } = require('sequelize');
+const bcrypt = require('bcrypt');
 const sequelize = require('../config/connection');
 
 // create our User model
-class User extends Model {}
+class User extends Model {
+    // set up method to run on instance data (per user) to check password
+    checkPassword(loginPw) {
+        return bcrypt.compareSync(loginPw, this.password);
+    }
+}
 
 // define table columns and configuration
 User.init(
@@ -40,6 +46,31 @@ User.init(
             validate: {
             // this means the password must be at least four characters long
             len: [4]
+            }
+        }
+    },
+    {
+        hooks: {
+            // set up beforeCreate lifecycle "hook" functionality
+            // //We use the beforeCreate() hook to execute the bcrypt hash function on the plaintext password.
+            // beforeCreate(userData) {
+            //     // In the bcrypt hash function, we pass in the userData object that contains the plaintext password in the password property. We also pass in a saltRound value of 10.
+            //     return bcrypt.hash(userData.password, 10).then(newUserData => {
+            //         // The resulting hashed password is then passed to the Promise object as a newUserData object with a hashed password property. The return statement then exits out of the function, returning the hashed password in the newUserData function.
+            //         return newUserData
+            //     });
+            // }
+            // The async keyword is used as a prefix to the function that contains the asynchronous function
+            async beforeCreate(newUserData) {
+                // await can be used to prefix the async function, which will then gracefully assign the value from the response to the newUserData's password property
+                newUserData.password = await bcrypt.hash(newUserData.password, 10);
+                // The newUserData is then returned to the application with the hashed password.
+                return newUserData;
+            },
+            // set up beforeUpdate lifecycle "hook" functionality
+            async beforeUpdate(updatedUserData) {
+              updatedUserData.password = await bcrypt.hash(updatedUserData.password, 10);
+              return updatedUserData;
             }
         }
     },
